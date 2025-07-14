@@ -1,3 +1,7 @@
+# Partition sizes are in MBytes. Required.
+rootfs-size: 512
+
+# Extra packages to include in the image. Required.
 packages:
     - luci-app-dockerman
     - luci-app-samba4

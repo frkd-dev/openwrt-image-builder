@@ -16,23 +16,6 @@ jobs:
     name: Image builder
     runs-on: ubuntu-latest
     steps:
-      - name: Prepare environment
-        run: |
-          sudo apt install \
-            build-essential \
-            file \
-            libncurses-dev \
-            zlib1g-dev \
-            gawk \
-            git \
-            gettext \
-            libssl-dev \
-            xsltproc \
-            rsync \
-            wget \
-            unzip \
-            python3
-
       - name: Checkout repo
         uses: actions/checkout@v4
 
@@ -45,15 +28,18 @@ jobs:
       - name: Build image
         id: build_image
         run: |
+          PACKAGES=$(yq '.packages' config.yaml | tr '\n' ' ')
+          SIZE=$(yq '.rootfs-size' config.yaml)
+
           cd "openwrt-imagebuilder-${{ inputs.version }}-x86-64.Linux-x86_64/"
-          make image PROFILE="generic" PACKAGES="$(yq '.packages' config.yaml | tr '\n' ' ')"
-          tree bin/targets
+          make image PROFILE="generic" ROOTFS_PARTSIZE="$SIZE" PACKAGES="$PACKAGES"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: generic-ext4-combined-efi.img.gz
-          path: openwrt-imagebuilder-${{ inputs.version }}-x86-64.Linux-x86_64/bin/targets/x86/64/generic-ext4-combined-efi.img.gz
+          name: openwrt-${{ inputs.version }}-x86-64-generic-ext4-combined-efi.img.gz
+          path: openwrt-imagebuilder-${{ inputs.version }}-x86-64.Linux-x86_64/bin/targets/x86/64/openwrt-*-combined-efi.img.gz
+          retention-days: 7
 
   release:
     name: Release image
