@@ -1,0 +1,86 @@
+name: Release Image
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "A bare version string without 'v' prefix"
+        required: true
+        type: string
+      tag:
+        description: "A tag of release as it will be created, with 'v' prefix"
+        required: true
+        type: string
+
+jobs:
+  builder:
+    name: Image builder
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare environment
+        run: |
+          sudo apt install \
+            build-essential \
+            file \
+            libncurses-dev \
+            zlib1g-dev \
+            gawk \
+            git \
+            gettext \
+            libssl-dev \
+            xsltproc \
+            rsync \
+            wget \
+            unzip \
+            python3
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download image builder
+        id: download_image_builder
+        run: |
+          wget "https://downloads.openwrt.org/releases/${{ inputs.version }}/targets/x86/64/openwrt-imagebuilder-${{ inputs.version }}-x86-64.Linux-x86_64.tar.zst"
+          tar --zstd -xvf "openwrt-imagebuilder-${{ inputs.version }}-x86-64.Linux-x86_64.tar.zst"
+
+      - name: Build image
+        id: build_image
+        run: |
+          cd "openwrt-imagebuilder-${{ inputs.version }}-x86-64.Linux-x86_64/"
+          make image PROFILE="generic" PACKAGES="$(yq '.packages' config.yaml | tr '\n' ' ')"
+          tree bin/targets
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: generic-ext4-combined-efi.img.gz
+          path: openwrt-imagebuilder-${{ inputs.version }}-x86-64.Linux-x86_64/bin/targets/x86/64/generic-ext4-combined-efi.img.gz
+
+  release:
+    name: Release image
+    needs: [builder]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: "*.img.gz"
+        merge-multiple: true
+
+    - name: Release
+      run: |
+        GH_TOKEN=${{ secrets.GH_TOKEN }}
+
+        sha256sum *.img.gz > shasums
+
+        cat > release-notes <<EOF
+        **OpenWRT ${{ inputs.tag }}** (homelab image)
+
+        :warning: This image is not intended for a wide audience or production environments :warning:
+
+        **SHA256**
+        ```
+        $(cat shasums)
+        ```
+        EOF
+
+        gh release create ${{ inputs.tag }} -F release-notes *.img.gz

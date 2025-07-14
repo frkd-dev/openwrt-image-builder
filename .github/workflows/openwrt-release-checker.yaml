@@ -1,0 +1,38 @@
+name: OpenWRT Release Checker
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '20 4 * * 6'  # Every Saturday at 04:20 UTC
+jobs:
+  release_checker:
+    name: Check new releases
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Check info from repos
+      id: version_info
+      run: |
+        OPENWRT_VER=$(gh api /repos/openwrt/openwrt/releases/latest -q '.tag_name')
+        echo "Latest OpenWRT version: $OPENWRT_VER"
+
+        if [[ "$(gh api /repos/frkd-dev/openwrt-image-builder/releases | yq '. | length')" == 0 ]]; then
+          IMAGE_VER="null"
+          echo "No image releases found. Image will be built for the latest OpenWRT version."
+        else
+          IMAGE_VER=$(gh api /repos/frkd-dev/openwrt-image-builder/releases/latest -q '.tag_name')
+          echo "Latest released image version: $IMAGE_VER"
+        fi
+
+        if [[ "$OPENWRT_VER" == "$IMAGE_VER" ]]; then
+          echo "No new OpenWRT release found. Exiting."
+          exit 0
+        else
+          echo "New OpenWRT release found: $OPENWRT_VER"
+        fi
+
+        echo "Scheduling a build for $OPENWRT_VER."
+        gh workflow run release-image.yml -f tag=$OPENWRT_VER version=${OPENWRT_VER/#v/}

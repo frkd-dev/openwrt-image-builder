@@ -1,0 +1,26 @@
+packages:
+    - luci-app-dockerman
+    - luci-app-samba4
+    - luci-app-ddns
+    - luci-proto-wireguard
+    - kmod-i40e
+    - kmod-iavf
+    - kmod-r8125
+    - ds-lite
+    - 6to4
+    - ethtool-full
+    - btop
+    - htop
+    - powertop
+    - kitty-terminfo
+    - nano
+    - ncdu
+    - hdparm
+    - nvme-cli
+    - smartmontools
+    - mtr-json
+    - lm-sensors
+    - ripgrep
+    - curl
+    - jq
+    - yq
