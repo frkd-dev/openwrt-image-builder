@@ -1,15 +1,19 @@
-# Partition sizes are in MBytes. Required.
+# Partition sizes are in MBytes.
 rootfs-size: 512
 
-# Extra packages to include in the image. Required.
 packages:
+    add: # Extra packages to add in the image.
+    - luci
     - luci-app-dockerman
     - luci-app-samba4
     - luci-app-ddns
     - luci-proto-wireguard
+    - luci-app-ttyd
     - kmod-i40e
-    - kmod-iavf
     - kmod-r8125
+    - btrfs-progs
+    - avahi-dbus-daemon
+    - zram-swap
     - ds-lite
     - 6to4
     - ethtool-full
@@ -20,11 +24,24 @@ packages:
     - nano
     - ncdu
     - hdparm
+    - lsblk
     - nvme-cli
     - smartmontools
     - mtr-json
     - lm-sensors
     - ripgrep
     - curl
+    - wget-ssl
     - jq
     - yq
+    remove: # Packages to remove from the image.
+    - kmod-amazon-ena
+    - kmod-amd-xgbe
+    - kmod-bnx2
+    - kmod-amd-xgbe
+
+
+# Disable unwanted services.
+#disabled-services:
+#    - dnsmasq
+#    - odhcpd

@@ -2,30 +2,32 @@ name: OpenWRT Release Checker
 on:
   workflow_dispatch:
   schedule:
-    - cron: '20 4 * * 6'  # Every Saturday at 04:20 UTC
+    - cron: '20 4 * * *'  # Every day at 04:20 UTC
 jobs:
   release_checker:
     name: Check new releases
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
     - name: Checkout repo
       uses: actions/checkout@v4
 
-    - name: Check info from repos
-      id: version_info
+    - name: Check versions
+      id: version_check
       run: |
-        OPENWRT_VER=$(gh api /repos/openwrt/openwrt/releases/latest -q '.tag_name')
-        echo "Latest OpenWRT version: $OPENWRT_VER"
+        GH_TAG_OPTS="--exclude-pre-releases --limit 1 --json tagName --jq .[].tagName"
+        OPENWRT_VER="$(gh release list --repo openwrt/openwrt $GH_TAG_OPTS)"
+        IMAGE_VER="$(gh release list $GH_TAG_OPTS)"
 
-        if [[ "$(gh api /repos/frkd-dev/openwrt-image-builder/releases | yq '. | length')" == 0 ]]; then
-          IMAGE_VER="null"
+        if [[ -z "$IMAGE_VER" ]]; then
+          IMAGE_VER="none"
           echo "No image releases found. Image will be built for the latest OpenWRT version."
-        else
-          IMAGE_VER=$(gh api /repos/frkd-dev/openwrt-image-builder/releases/latest -q '.tag_name')
-          echo "Latest released image version: $IMAGE_VER"
         fi
+
+        echo "Latest versions:"
+        echo "    OpenWRT=$OPENWRT_VER"
+        echo "    Image=$IMAGE_VER"
 
         if [[ "$OPENWRT_VER" == "$IMAGE_VER" ]]; then
           echo "No new OpenWRT release found. Exiting."
@@ -35,4 +37,4 @@ jobs:
         fi
 
         echo "Scheduling a build for $OPENWRT_VER."
-        gh workflow run release-image.yml -f tag=$OPENWRT_VER version=${OPENWRT_VER/#v/}
+        gh workflow run release-image.yaml -f version=${OPENWRT_VER/#v/}

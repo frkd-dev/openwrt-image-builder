@@ -6,67 +6,162 @@ on:
         description: "A bare version string without 'v' prefix"
         required: true
         type: string
-      tag:
-        description: "A tag of release as it will be created, with 'v' prefix"
-        required: true
-        type: string
 
 jobs:
   builder:
-    name: Image builder
+    name: Build and release image
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Download image builder
-        id: download_image_builder
         run: |
-          wget "https://downloads.openwrt.org/releases/${{ inputs.version }}/targets/x86/64/openwrt-imagebuilder-${{ inputs.version }}-x86-64.Linux-x86_64.tar.zst"
-          tar --zstd -xvf "openwrt-imagebuilder-${{ inputs.version }}-x86-64.Linux-x86_64.tar.zst"
+          echo ::group::Determine image builder file
+          wget -nv "https://downloads.openwrt.org/releases/${{ inputs.version }}/targets/x86/64/sha256sums"
+
+          IMGBLDR_FILE=$(awk '/openwrt-imagebuilder/ {print $2}' sha256sums | sed -E 's/\*//')
+          EXT=${IMGBLDR_FILE##*.}
+
+          case $EXT in
+            gz*) TAR_OPT=--gzip ;;
+            bz*) TAR_OPT=--bzip2 ;;
+            xz*) TAR_OPT=--xz ;;
+            zst) TAR_OPT=--zstd ;;
+            *) echo "Unsupported file extension: $EXT" ; exit 1 ;;
+          esac
+          echo ::endgroup::
+
+          echo ::group::Download image builder
+          wget -nv "https://downloads.openwrt.org/releases/${{ inputs.version }}/targets/x86/64/${IMGBLDR_FILE}"
+          echo ::endgroup::
+
+          echo ::group::Extract image builder
+          mkdir -p image-builder && cd image-builder
+          tar $TAR_OPT --strip-components=1 -xvf "../$IMGBLDR_FILE"
+          echo ::endgroup::
 
       - name: Build image
         id: build_image
         run: |
-          PACKAGES=$(yq '.packages' config.yaml | tr '\n' ' ')
+          [[ ! -e config.yaml ]] && cp config.example.yaml config.yaml
+
+          ADD_PKGS=$(yq '.packages.add[]' config.yaml | tr '\n\r' ' ')
+          REMOVE_PKS=$(yq '.packages.remove[] | . = "-" + .' config.yaml | tr '\n\r' ' ')
+          PACKAGES="$ADD_PKGS $REMOVE_PKS"
+
+          DISABLED_SERVICES=$(yq '.disabled-services[]' config.yaml | tr '\n' ' ')
+
           SIZE=$(yq '.rootfs-size' config.yaml)
+          [[ "$SIZE" == "null" ]] && SIZE=256
 
-          cd "openwrt-imagebuilder-${{ inputs.version }}-x86-64.Linux-x86_64/"
-          make image PROFILE="generic" ROOTFS_PARTSIZE="$SIZE" PACKAGES="$PACKAGES"
+          [[ ! -e "${{ github.workspace }}/files" ]] && mkdir -p "${{ github.workspace }}/files"
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+          echo ::group::Build image
+          cd image-builder
+          echo "Build using $(nproc) threads"
+          make image -j$(nproc) \
+            PROFILE="generic" \
+            ROOTFS_PARTSIZE="$SIZE" \
+            PACKAGES="$PACKAGES" \
+            DISABLED_SERVICES="$DISABLED_SERVICES" \
+            FILES="${{ github.workspace }}/files"
+          echo ::endgroup::
+
+      - name: Release image
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ADDED_PKGS=$(yq '.packages.add[]  | . = "* " + .' config.yaml)
+          REMOVED_PKGS=$(yq '.packages.remove[] | . = "* " + .' config.yaml)
+          DISABLED_SERVICES=$(yq '.disabled-services[] | . = "* " + .' config.yaml | tr '\n' ' ')
+
+          SIZE=$(yq '.rootfs-size' config.yaml)
+          [[ "$SIZE" == "null" ]] && SIZE=256
+
+          cat > release-notes <<EOF
+          **OpenWRT v${{ inputs.version }}**
+          A customized x86/64 OpenWRT image with extra packages for a personal homelab environment as a router, app server, and local file share storage.
+
+          :warning: This image is not intended for a wide audience or production environments!
+
+          ## Image properties
+
+          **RootFS partition size**: ${SIZE} MB
+
+          **Extra packages**
+
+          ${ADDED_PKGS:-None}
+
+          **Removed packages**
+
+          ${REMOVED_PKGS:-None}
+
+          **Disabled services**
+          ${DISABLED_SERVICES:-None}
+          EOF
+
+          gh release create "v${{ inputs.version }}" \
+            --title "OpenWRT v${{ inputs.version }}" \
+            --notes-file release-notes \
+            image-builder/bin/targets/x86/64/openwrt-*-ext4-combined-efi.img.gz
+
+      - name: Delete source code assets from release
+        uses: actions/github-script@v7
         with:
-          name: openwrt-${{ inputs.version }}-x86-64-generic-ext4-combined-efi.img.gz
-          path: openwrt-imagebuilder-${{ inputs.version }}-x86-64.Linux-x86_64/bin/targets/x86/64/openwrt-*-combined-efi.img.gz
-          retention-days: 7
+          script: |
+            const tag = 'v${{ inputs.version }}';
 
-  release:
-    name: Release image
-    needs: [builder]
-    runs-on: ubuntu-latest
-    steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v4
-      with:
-        pattern: "*.img.gz"
-        merge-multiple: true
+            try {
+              // Get the release by tag
+              const { data: release } = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: tag
+              });
 
-    - name: Release
-      run: |
-        GH_TOKEN=${{ secrets.GH_TOKEN }}
+              console.log(`Found release for tag ${tag}: ${release.name}`);
 
-        sha256sum *.img.gz > shasums
+              // Find source code assets (zip and tar.gz)
+              const sourceAssets = release.assets.filter(asset =>
+                asset.name == "v${{ inputs.version }}.zip" || asset.name == 'v${{ inputs.version }}.tar.gz'
+              );
 
-        cat > release-notes <<EOF
-        **OpenWRT ${{ inputs.tag }}** (homelab image)
+              if (sourceAssets.length === 0) {
+                console.log('No source code assets found to delete');
+                return;
+              }
 
-        :warning: This image is not intended for a wide audience or production environments :warning:
+              // Delete each source code asset
+              for (const asset of sourceAssets) {
+                console.log(`Deleting asset: ${asset.name}`);
+                await github.rest.repos.deleteReleaseAsset({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  asset_id: asset.id
+                });
+              }
 
-        **SHA256**
-        ```
-        $(cat shasums)
-        ```
-        EOF
+              console.log(`Deleted ${sourceAssets.length} source code assets`);
 
-        gh release create ${{ inputs.tag }} -F release-notes *.img.gz
+            } catch (error) {
+              if (error.status === 404) {
+                core.setFailed(`Release not found for tag: ${tag}`);
+              } else {
+                core.setFailed(`Error: ${error.message}`);
+              }
+            }
+
+      - name: Drop old releases
+        uses: sgpublic/delete-release-action@v1.1
+        with:
+          release-drop: true
+          release-keep-count: 10
+          release-drop-tag: true
+          pre-release-drop: true
+          pre-release-keep-count: -1
+          pre-release-drop-tag: true
+          draft-drop: true
+          draft-drop-count: -1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
