@@ -1,3 +1,11 @@
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
 :openwrt-fwsel: https://firmware-selector.openwrt.org[OpenWRT Firmware Selector]
 
 = OpenWRT Image Builder for homelab
@@ -47,11 +55,7 @@ The image builder is configured via `config.yaml` file.
 If the file is not present, the builder will use `config.example.yaml` file.
 This helps to have customized configurations in forked repositories without conflicts with this repository.
 
-.Example of configuration
-[source, yaml]
---
-include::config.example.yaml[]
---
+Check example of configuration with comments in link:config.example.yaml[] file.
 
 This configuration example adds driver for Intel X710 and Realtek RTL8125 NICs, as well as Docker, Samba, Wireguard, support for IPv4 to IPv6 transitional technologies, and bunch of other day-to-day utilities to make system more comfortable. Also, it removes NIC drivers that never will appear in my homelab environment, but that are coming in a default OpenWRT image, like: Amazon ENA, Broadcom, and AMD.
 
