@@ -57,7 +57,7 @@ Architecture:: Generic x86/64
 [NOTE]
 For image type details and "how to install", check an https://openwrt.org/docs/guide-user/installation/openwrt_x86[official page].
 
-This repository configured to check daily https://github.com/openwrt/openwrt/releases[official OpenWRT releases] (pre-releases are skipped) and release a custom build.
+This repository is configured to check daily https://github.com/openwrt/openwrt/releases[official OpenWRT releases] (pre-releases are skipped) and release a custom build.
 
 To avoid GitHub abuse and keep repository space usage low, this repository will keep only latest 10 image releases.
 
