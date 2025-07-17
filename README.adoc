@@ -21,7 +21,7 @@ It's easy as 1-2-3:
 
 ...or grab a release if you are fine with a current package set.
 
-IMPORTANT: This repository is NOT a fork of OpenWRT.
+IMPORTANT: This repository is NOT a fork of OpenWRT and non-official image builder.
 
 == Motivation
 
