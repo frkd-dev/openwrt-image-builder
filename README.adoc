@@ -1,0 +1,74 @@
+:openwrt-fwsel: https://firmware-selector.openwrt.org[OpenWRT Firmware Selector]
+
+= OpenWRT Image Builder for homelab
+
+A repository with scripts and GitHub Action for automatic builds of a customized OpenWRT image for homelab purposes (router and app server).
+
+IMPORTANT: This repository is NOT a fork of OpenWRT and NOT intended for a wide audience or production environments.
+
+== Motivation
+
+While an official {openwrt-fwsel} provides an option for building customized images,
+it has a limitation on a system partition size which is 104 MByte.
+It's a huge limitation on how many packages you can put into an image.
+
+This is a "no-go" situation if your aim is to get a ready-to-go image with a lot of packages for a router and app server system running on x86-64 architecture.
+This image builder removes these limits and also provides automated builds of newer releases with easy to use YAML configuration.
+
+**Goals are:**
+
+. Automated builds of customized and ready-to-use OpenWRT x86/64 image for a **personal** homelab environment.
+. Provide an offsite place for downloads of customized images based on **stable** OpenWRT releases.
+. Provide *as thin as possible* YAML configuration wrapper around the official OpenWRT image builder.
+. Provide a forkable repository (template) for building personalized OpenWRT x86/64 images.
+
+**Non-goals are:**
+
+. Support architectures other than x86/64. Embedded devices with heavily constrained resources can be easily built using the official {openwrt-fwsel}.
+. Create a replacement for the official OpenWRT image builder.
+. Build pre-release or release candidate images.
+. Provide a wide range of packages that fits everyone and all sort of tasks. Forking this repo and getting own image is a way to achieve that.
+
+== Images
+
+The builder produces only images with the following characteristics:
+
+Partition format:: EXT4
+Image type:: combined EFI `.img.gz`
+Architecture:: Generic x86/64
+
+GitHub actions configured to check https://github.com/openwrt/openwrt/releases[official OpenWRT releases] and as soon as a new one is available, the new customized image will be released.
+
+To avoid GitHub abuse and keep repository space usage low, this repository will keep only latest 10 image releases.
+
+== Configuration
+
+The image builder is configured via `config.yaml` file.
+If the file is not present, the builder will use `config.example.yaml` file.
+This helps to have customized configurations in forked repositories without conflicts with this repository.
+
+.Example of configuration
+[source, yaml]
+--
+include::config.example.yaml[]
+--
+
+This configuration example adds driver for Intel X710 and Realtek RTL8125 NICs, as well as Docker, Samba, Wireguard, support for IPv4 to IPv6 transitional technologies, and bunch of other day-to-day utilities to make system more comfortable. Also, it removes NIC drivers that never will appear in my homelab environment, but that are coming in a default OpenWRT image, like: Amazon ENA, Broadcom, and AMD.
+
+=== Files and scripts
+
+If you need files/scripts built into the image, you can place them in `files/` directory of this repository.
+The builder will copy them to the root of the image.
+A good example would be a https://openwrt.org/docs/guide-developer/uci-defaults[UCI defaults] a first-boot scripts.
+For instance a `files/etc/uci-defaults/99-mynetwork` script that contains your custom network configuration will end up in `/etc/uci-defaults/99-mynetwork` in a rootfs and will be executed on a first boot.
+
+== New features
+
+The builder is mostly feature-complete as it aimed current goals.
+The only missing "good to have" feature is support of `qcow2` qemu images.
+Currently, there are no plans to add new features, as almost all goals are already met.
+Features may be added once the OpenWRT image builder adds new capabilities.
+
+== License
+
+MIT License.
