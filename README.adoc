@@ -8,16 +8,25 @@ endif::[]
 
 :openwrt-fwsel: https://firmware-selector.openwrt.org[OpenWRT Firmware Selector]
 
-= OpenWRT Image Builder for homelab
+= Automated and customizable OpenWRT x86/64 Image Builder
 
-A repository with scripts and GitHub Action for automatic builds of a customized OpenWRT image for homelab purposes (router and app server).
+This repository hosts GitHub actions for automated builds of customizable OpenWRT x86/64 images.
 
-IMPORTANT: This repository is NOT a fork of OpenWRT and NOT intended for a wide audience or production environments.
+Want a OpenWRT x86/64 image with your packages/files/scripts?
+It's easy as 1-2-3:
+
+. Fork this repo.
+. Make a copy `config.example.yaml` → `config.yaml` with your edits.
+. Start `OpenWRT Release Checker` action.
+
+...or grab a release if you are fine with a current package set.
+
+IMPORTANT: This repository is NOT a fork of OpenWRT.
 
 == Motivation
 
-While an official {openwrt-fwsel} provides an option for building customized images,
-it has a limitation on a system partition size which is 104 MByte.
+While an official {openwrt-fwsel} provides a good for most cases customizable image builder,
+it has a limitation on a rootfs partition size which is 104 MByte.
 It's a huge limitation on how many packages you can put into an image.
 
 This is a "no-go" situation if your aim is to get a ready-to-go image with a lot of packages for a router and app server system running on x86-64 architecture.
@@ -26,16 +35,16 @@ This image builder removes these limits and also provides automated builds of ne
 **Goals are:**
 
 . Automated builds of customized and ready-to-use OpenWRT x86/64 image for a **personal** homelab environment.
-. Provide an offsite place for downloads of customized images based on **stable** OpenWRT releases.
 . Provide *as thin as possible* YAML configuration wrapper around the official OpenWRT image builder.
+. Provide an offsite place for downloads of customized images based on **stable** OpenWRT releases.
 . Provide a forkable repository (template) for building personalized OpenWRT x86/64 images.
 
 **Non-goals are:**
 
-. Support architectures other than x86/64. Embedded devices with heavily constrained resources can be easily built using the official {openwrt-fwsel}.
+. Support architectures other than x86/64. Custom images for embedded devices with heavily constrained resources can be easily built using the official {openwrt-fwsel}.
 . Create a replacement for the official OpenWRT image builder.
-. Build pre-release or release candidate images.
-. Provide a wide range of packages that fits everyone and all sort of tasks. Forking this repo and getting own image is a way to achieve that.
+. Provide builds of pre-release images.
+. Provide a wide range of packages that fits everyone and all sorts of tasks. Fork this repo and build your own image.
 
 == Images
 
@@ -68,8 +77,8 @@ For instance a `files/etc/uci-defaults/99-mynetwork` script that contains your c
 
 == New features
 
-The builder is mostly feature-complete as it aimed current goals.
-The only missing "good to have" feature is support of `qcow2` qemu images.
+The builder is mostly feature-complete as it's gained current goals.
+The only missing "good to have" feature is support of qemu `qcow2` images.
 Currently, there are no plans to add new features, as almost all goals are already met.
 Features may be added once the OpenWRT image builder adds new capabilities.
 
