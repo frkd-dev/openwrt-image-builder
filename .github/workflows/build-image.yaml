@@ -87,7 +87,9 @@ jobs:
 
           echo "::group::Extract built image"
           # Uploaded artifacts are always compressed by actions/upload-artifact, so we need to extract image to avoid double compression.
-          gunzip "${{env.IMAGE_BASE_NAME}}.img.gz"
+          # Someone came up with idea of attaching metadata to gzipped image so gzip exits with a warning code '2' which terminates action.
+          # Adding 'true' suppresses the exit code.
+          gunzip "${{env.IMAGE_BASE_NAME}}.img.gz" || true
           rm -f "${{env.IMAGE_BASE_NAME}}.img.gz"
           echo "::endgroup::"
 
