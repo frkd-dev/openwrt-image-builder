@@ -1,0 +1,110 @@
+name: Build Image
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "A bare version string without 'v' prefix (23.05, 24.10.2, etc.)"
+        required: true
+        type: string
+      rootfs-size:
+        description: "Root filesystem partition size in MBytes"
+        required: false
+        type: number
+        default: 512
+      packages:
+        description: "Extra packages to add in the image (add '-' prefix to remove them: e.g., '-kmod-amazon-ena')"
+        required: false
+        type: string
+        default: ""
+      disabled-services:
+        description: "Services to disable in the image"
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  builder:
+    name: Build and upload image
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_BASE_NAME: "openwrt-${{ inputs.version }}-x86-64-generic-ext4-combined-efi"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install qemu-utils
+        run: sudo apt-get install -y qemu-utils
+
+      - name: Download image builder
+        run: |
+          echo ::group::Determine image builder file
+          wget -nv "https://downloads.openwrt.org/releases/${{ inputs.version }}/targets/x86/64/sha256sums"
+
+          IMGBLDR_FILE=$(awk '/openwrt-imagebuilder/ {print $2}' sha256sums | sed -E 's/\*//')
+          EXT=${IMGBLDR_FILE##*.}
+
+          case $EXT in
+            gz*) TAR_OPT=--gzip ;;
+            bz*) TAR_OPT=--bzip2 ;;
+            xz*) TAR_OPT=--xz ;;
+            zst) TAR_OPT=--zstd ;;
+            *) echo "Unsupported file extension: $EXT" ; exit 1 ;;
+          esac
+          echo ::endgroup::
+
+          echo ::group::Download image builder
+          wget -nv "https://downloads.openwrt.org/releases/${{ inputs.version }}/targets/x86/64/${IMGBLDR_FILE}"
+          echo ::endgroup::
+
+          echo ::group::Extract image builder
+          mkdir -p image-builder && cd image-builder
+          tar $TAR_OPT --strip-components=1 -xvf "../$IMGBLDR_FILE"
+          echo ::endgroup::
+
+      - name: Build image
+        id: build_image
+        run: |
+          [[ ! -e "${{ github.workspace }}/files" ]] && mkdir -p "${{ github.workspace }}/files"
+
+          echo ::group::Build image
+          cd image-builder
+          echo "Build using $(nproc) threads"
+          make image -j$(nproc) \
+            PROFILE="generic" \
+            ROOTFS_PARTSIZE="${{ inputs.rootfs-size }}" \
+            PACKAGES="${{ inputs.packages }}" \
+            DISABLED_SERVICES="${{ inputs.disabled-services }}" \
+            FILES="${{ github.workspace }}/files"
+          echo ::endgroup::
+
+      - name: Prepare images for upload
+        run: |
+          echo "::group::Remove image builder files"
+          # A free github accounts have limits on runner's storage, so clean up unused files
+          mv "image-builder/bin/targets/x86/64/${{env.IMAGE_BASE_NAME}}.img.gz" .
+          rm -rf image-builder
+          echo "::endgroup::"
+
+          echo "::group::Extract built image"
+          # Uploaded artifacts are always compressed by actions/upload-artifact, so we need to extract image to avoid double compression.
+          gunzip "${{env.IMAGE_BASE_NAME}}.img.gz"
+          rm -f "${{env.IMAGE_BASE_NAME}}.img.gz"
+          echo "::endgroup::"
+
+          echo "::group::Convert image to qcow2"
+          qemu-img convert -O qcow2 "${{env.IMAGE_BASE_NAME}}.img" "${{env.IMAGE_BASE_NAME}}.qcow2"
+          echo "::endgroup::"
+
+      - name: Upload .img file
+        uses: actions/upload-artifact@v4
+        with:
+          if-no-files-found: error
+          name: ${{ env.IMAGE_BASE_NAME }}.img
+          path: ${{ env.IMAGE_BASE_NAME }}.img
+
+      - name: Upload .qcow2 file
+        uses: actions/upload-artifact@v4
+        with:
+          if-no-files-found: error
+          name: ${{ env.IMAGE_BASE_NAME }}.qcow2
+          path: ${{ env.IMAGE_BASE_NAME }}.qcow2
