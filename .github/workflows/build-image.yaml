@@ -86,10 +86,12 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Extract built image"
-          # Uploaded artifacts are always compressed by actions/upload-artifact, so we need to extract image to avoid double compression.
-          # Someone came up with idea of attaching metadata to gzipped image so gzip exits with a warning code '2' which terminates action.
-          # Adding 'true' suppresses the exit code.
-          gunzip "${{env.IMAGE_BASE_NAME}}.img.gz" || true
+          # Uploaded artifacts are always compressed by actions/upload-artifact, so we need to extract image to avoid a double compression.
+          # OpenWRT came up with an idea of attaching metadata to gzipped image and gunzip ALWAYS exits with a code '2' which it
+          # uses for a warning, but for a shell any non-zero code is an error, and this terminates a script.
+          # That's why gunzip error codes shall be handled in a special way.
+          gunzip "${{env.IMAGE_BASE_NAME}}.img.gz" || [[ $? != 0 && $? != 2 ]] && echo "gunzip exited with error" && exit 1
+
           rm -f "${{env.IMAGE_BASE_NAME}}.img.gz"
           echo "::endgroup::"
 
