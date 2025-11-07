@@ -7,11 +7,14 @@ ifdef::env-github[]
 endif::[]
 
 :openwrt-fwsel: https://firmware-selector.openwrt.org[OpenWRT Firmware Selector]
+:url-artifact-retention: https://docs.github.com/en/organizations/managing-organization-settings/configuring-the-retention-period-for-github-actions-artifacts-and-logs-in-your-organization
+:url-rootfs-size: https://github.com/openwrt/openwrt/blob/099633be82ee8a75a2f271b90f3a07e6e2c01ffc/config/Config-images.in#L339
+:url-install-x86: https://openwrt.org/docs/guide-user/installation/openwrt_x86
 
 = Personal customizable OpenWRT x86/64 Image Builder
 
-This repository hosts GitHub actions for on-demand builds of customized OpenWRT x86/64 images.
-This is an unofficial companion to the official {openwrt-fwsel} with additional features that targets only x86/64 architecture.
+This repository hosts GitHub Actions for on-demand builds of customised OpenWRT x86/64 images.
+This is an unofficial companion to the official {openwrt-fwsel} with additional features targeting only x86/64 architecture.
 
 Want a OpenWRT x86/64 image with your packages/files/scripts?
 
@@ -19,54 +22,70 @@ It's easy as 1-2-3:
 
 . Fork this repo.
 . Run `Build Image` action with your options.
-. Download built image from the `Artifacts` section of the action run.
+. Download the image from the Action's `Artifacts` section.
 
-By default all public repositories have 90 days of retention for artifacts, so you can always re-download your images.
-This is another advantage of this builder over the official {openwrt-fwsel} which has no retention at all.
+**Bonus**:
+GitHub has {url-artifact-retention}[a configurable retention period] for artifacts, so you can always re-download your images during this period.
+
+Read details below.
 
 == Motivation
 
-While an official {openwrt-fwsel} provides a good for most cases customizable image builder,
-it has a limitation on a rootfs partition size which is 104 MByte.
-It's a huge limitation on how many packages you can put into an image.
+While the official {openwrt-fwsel} provides a good (for most cases) customizable image builder,
+it has a limitation (as of v24.10) on a rootfs partition size which is {url-rootfs-size}[104 MByte].
+Also, it doesn't support building QEMU images in a qcow2 format.
 
-This is a "no-go" situation if your aim is to get a ready-to-go image with a lot of packages for a router and app server system running on x86-64 architecture.
-This image builder removes these limits and also provides on-demand builds.
+In essence, the official builder is often a "no-go" solution for x86/64 images since such hardware is usually picked to run a bunch of resource-demanding apps.
+This often implies that the initial image may need a bunch of heavyweight preinstalled packages, like Docker,
+so images easily exceed the default rootfs size.
 
-**Goals are:**
+This image builder removes these limitations and allows you to build truly customised images, while GitHub provides on-demand build runners and {url-artifact-retention}[temporary storage] for built images.
 
-. Provide on-demand builds of customized and ready-to-use OpenWRT x86/64 images of `.img` and `.qcow2` formats.
+**Goals:**
+
+. Provide on-demand builds of customized and ready-to-use OpenWRT x86/64 images in `.img` and `.qcow2` formats.
 . Provide an offsite place for downloads of customized images based on **stable** OpenWRT releases.
 . Provide a forkable repository (template) for building personalized OpenWRT x86/64 images.
 
-**Non-goals are:**
+**Not goals:**
 
 . Support architectures other than x86/64. Custom images for embedded devices with heavily constrained resources can be easily built using the official {openwrt-fwsel}.
+. Support of unstable release builds.
 . Create a replacement for the official OpenWRT image builder.
+
+== Instructions
+
+0. Fork this repository.
+1. Go to "Actions" tab in your freshly forked repository.
+2. Select "Build Image" action in the left panel.
+3. Click "Run workflow" button.
+4. Fill required fields.
+5. Run the workflow.
+6. Once action is done running, open the last "Build image" run to view and download artifacts.
 
 == Images
 
-The builder produces only images with the following characteristics:
+The builder produces only images of the following type:
 
 Partition format:: ext4
 Image type:: combined EFI `.img` and `.qcow2`
 Architecture:: Generic x86/64
 
 [NOTE]
-For image type details and "how to install", check an https://openwrt.org/docs/guide-user/installation/openwrt_x86[official page].
+For image type details and "how to install", check {url-install-x86}[the official documentation].
 
 === Files and scripts
 
-If you need files/scripts built into the image, you can place them in `files/` directory of this repository.
+If you need files/scripts built into the image, you can place them in `files/` directory of your forked repository.
 The builder will copy them to the root of the image.
-A good example would be a https://openwrt.org/docs/guide-developer/uci-defaults[UCI defaults] a first-boot scripts.
+A good example would be a https://openwrt.org/docs/guide-developer/uci-defaults[UCI defaults], a first-boot scripts.
 For instance creating a `files/etc/uci-defaults/99-mynetwork` script that contains your custom network configuration will end up in `/etc/uci-defaults/99-mynetwork` of a rootfs and will be executed on a first boot.
 
 == New features
 
 The builder is mostly feature-complete as it's gained current goals.
 Currently, there are no plans to add new features, as almost all goals are already met.
-Features may be added once the OpenWRT image builder adds new capabilities.
+Features may be added once the official image builder adds new capabilities.
 
 == License
 
