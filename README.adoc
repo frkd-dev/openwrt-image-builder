@@ -10,6 +10,7 @@ endif::[]
 :url-artifact-retention: https://docs.github.com/en/organizations/managing-organization-settings/configuring-the-retention-period-for-github-actions-artifacts-and-logs-in-your-organization
 :url-rootfs-size: https://github.com/openwrt/openwrt/blob/099633be82ee8a75a2f271b90f3a07e6e2c01ffc/config/Config-images.in#L339
 :url-install-x86: https://openwrt.org/docs/guide-user/installation/openwrt_x86
+:url-uci-defaults: https://openwrt.org/docs/guide-developer/uci-defaults
 
 = Personal customizable OpenWRT x86/64 Image Builder
 
@@ -55,13 +56,16 @@ This image builder removes these limitations and allows you to build truly custo
 
 == Instructions
 
-0. Fork this repository.
-1. Go to "Actions" tab in your freshly forked repository.
-2. Select "Build Image" action in the left panel.
-3. Click "Run workflow" button.
-4. Fill required fields.
-5. Run the workflow.
-6. Once action is done running, open the last "Build image" run to view and download artifacts.
+After forking the repository:
+
+image::doc/run-action-instruction.avif[width=50%]
+
+. Go to the "Actions" of _your forked repo_.
+. Select "Build Image" action.
+. Click "Run workflow" button.
+. Fill required fields.
+. Run the workflow.
+. Once the action finished running, open the last "Build image" run to view and download artifacts.
 
 == Images
 
@@ -74,12 +78,13 @@ Architecture:: Generic x86/64
 [NOTE]
 For image type details and "how to install", check {url-install-x86}[the official documentation].
 
-=== Files and scripts
+=== Adding files/scripts to the image
 
 If you need files/scripts built into the image, you can place them in `files/` directory of your forked repository.
 The builder will copy them to the root of the image.
-A good example would be a https://openwrt.org/docs/guide-developer/uci-defaults[UCI defaults], a first-boot scripts.
-For instance creating a `files/etc/uci-defaults/99-mynetwork` script that contains your custom network configuration will end up in `/etc/uci-defaults/99-mynetwork` of a rootfs and will be executed on a first boot.
+
+A good example would be a {url-uci-defaults}[UCI defaults], a first-boot scripts.
+For instance, adding a `files/etc/uci-defaults/99-mynetwork` script to this repo containing a custom network configuration, the file will appear in `/etc/uci-defaults/99-mynetwork` of a rootfs, and as such it will be executed on a first boot.
 
 == New features
 
