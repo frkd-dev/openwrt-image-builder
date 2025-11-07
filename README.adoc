@@ -88,8 +88,7 @@ For instance, adding a `files/etc/uci-defaults/99-mynetwork` script to this repo
 
 == New features
 
-The builder is mostly feature-complete as it's gained current goals.
-Currently, there are no plans to add new features, as almost all goals are already met.
+There are no plans to add new features, as all goals are already met so far.
 Features may be added once the official image builder adds new capabilities.
 
 == License
