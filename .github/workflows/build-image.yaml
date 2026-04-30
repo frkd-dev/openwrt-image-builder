@@ -30,7 +30,7 @@ jobs:
       IMAGE_BASE_NAME: "openwrt-${{ inputs.version }}-x86-64-generic-ext4-combined-efi"
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install qemu-utils
         run: sudo apt-get install -y qemu-utils
@@ -100,14 +100,14 @@ jobs:
           echo "::endgroup::"
 
       - name: Upload .img file
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           if-no-files-found: error
           name: ${{ env.IMAGE_BASE_NAME }}.img
           path: ${{ env.IMAGE_BASE_NAME }}.img
 
       - name: Upload .qcow2 file
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           if-no-files-found: error
           name: ${{ env.IMAGE_BASE_NAME }}.qcow2
